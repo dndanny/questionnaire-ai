@@ -1,7 +1,7 @@
 export const messages = {
   general: {
-    brand: "Questionnaire AI",
-    logoAlt: "Questionnaire AI Logo",
+    brand: "QUESTIONNaiRE",
+    logoAlt: "QUESTIONNaiRE Logo",
     loading: "Loading...",
     success: "Success",
     error: "Error",
@@ -12,7 +12,7 @@ export const messages = {
     backDashboard: "Back to Dashboard",
   },
   meta: {
-    title: "Questionnaire AI - Automated Assessment Platform",
+    title: "QUESTIONNaiRE - Automated Assessment Platform",
     desc: "AI-powered questionnaire generation and grading.",
   },
   landing: {
@@ -24,28 +24,28 @@ export const messages = {
       welcome: "Hi, ",
     },
     hero: {
-      badge: "✨ AI Grading is Here",
+      badge: "✨ Auto Grading is Here",
       title: "Stop Grading.",
       subtitle: "Start Teaching.",
-      desc: "Upload your notes. We generate the questionnaire. Students take it. AI marks it instantly.",
+      desc: "Upload your notes. We generate the questionnaire. Students take it. Auto-mark it instantly.",
       ctaPrimary: "Start for Free",
       ctaDashboard: "Go to Dashboard",
       ctaSecondary: "Student Join",
     },
     features: {
       card1: { title: "Text to Questionnaire", desc: "Paste your lecture notes, PDFs, or articles. Our Gemini-powered engine creates perfect questions in seconds." },
-      card2: { title: "AI Grading Agent", desc: "Strict mode for factual accuracy, or Open mode for general knowledge. The AI reads and grades like a human." },
+      card2: { title: "Auto Grading Agent", desc: "Strict mode for factual accuracy, or Open mode for general knowledge. The AI reads and grades like a human." },
       card3: { title: "Instant Feedback", desc: "Students don't wait days for results. They get detailed feedback and scores emailed to them immediately." },
     },
     howItWorks: {
       title: "How it works",
       step1: "Host creates a room by pasting study material.",
       step2: "Students join via QR Code or 6-digit PIN.",
-      step3: "AI grades answers in real-time or batch mode.",
+      step3: "Auto-grade answers in real-time or batch mode.",
       step4: "Everyone celebrates. (Especially you).",
     },
     footer: {
-      copyright: "© 2026 Questionnaire AI. Built for the future of education.",
+      copyright: "© 2026 QUESTIONNaiRE. Built for the future of education.",
     }
   },
   auth: {
@@ -67,7 +67,7 @@ export const messages = {
     stats: {
       active: "Active Rooms",
       noRoomsTitle: "No rooms yet!",
-      noRoomsBtn: "Create your first Questionnaire",
+      noRoomsBtn: "Create your first quizroom",
     },
     card: {
       codeLabel: "CODE:",
@@ -98,7 +98,7 @@ export const messages = {
       waiting: "Waiting for students to submit...",
       pendingBadge: "Pending",
       gradeBatchBtn: "⚡ Grade Pending Subs",
-      gradeBatching: "AI Grading...",
+      gradeBatching: "Auto Grading...",
       editBtn: "⚙️ Edit & Settings",
     },
     edit: {

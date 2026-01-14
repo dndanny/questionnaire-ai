@@ -1,12 +1,12 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button, Card } from '@/components/ui';
 import { motion } from 'framer-motion';
 import { messages } from '@/contents/messages/en/message';
 
-// Custom Modern Input Component
-const ModernInput = ({ label, value, onChange, placeholder, type = "text", required = false }: any) => (
+// Custom Modern Input Component (Updated to support disabled state)
+const ModernInput = ({ label, value, onChange, placeholder, type = "text", required = false, disabled = false }: any) => (
   <div className="space-y-2">
     <label className="block text-sm font-black uppercase tracking-wider text-gray-700 ml-1">
       {label} {required && <span className="text-red-500">*</span>}
@@ -16,7 +16,12 @@ const ModernInput = ({ label, value, onChange, placeholder, type = "text", requi
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="w-full p-4 bg-white border-4 border-black rounded-xl text-lg font-bold placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-brand-300 focus:border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] focus:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] focus:-translate-y-1"
+      disabled={disabled}
+      className={`w-full p-4 border-4 border-black rounded-xl text-lg font-bold placeholder:text-gray-300 focus:outline-none transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] 
+        ${disabled 
+            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 shadow-none' 
+            : 'bg-white focus:ring-4 focus:ring-brand-300 focus:border-black focus:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] focus:-translate-y-1'
+        }`}
     />
   </div>
 );
@@ -31,6 +36,7 @@ function JoinPageContent() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // New State
 
   // Quiz State
   const [joined, setJoined] = useState(false);
@@ -42,6 +48,20 @@ function JoinPageContent() {
   useEffect(() => {
     const urlCode = searchParams.get('code');
     if (urlCode) setCode(urlCode);
+
+    // CHECK LOGIN STATUS AUTOMATICALLY
+    fetch('/api/auth/me')
+        .then(res => {
+            if (res.ok) return res.json();
+            return null;
+        })
+        .then(user => {
+            if (user) {
+                setName(user.name);
+                setEmail(user.email);
+                setIsLoggedIn(true); // Locks the email field
+            }
+        });
   }, [searchParams]);
 
   const joinRoom = async () => {
@@ -109,6 +129,11 @@ function JoinPageContent() {
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-black italic tracking-tighter">{t.enterTitle}</h1>
                     <p className="text-gray-500 font-bold mt-2">{t.enterDesc}</p>
+                    {isLoggedIn && (
+                        <div className="mt-4 bg-brand-100 text-brand-800 px-3 py-1 rounded-full text-xs font-bold inline-block border border-brand-200">
+                            Logged in as {email}
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-6">
@@ -135,6 +160,7 @@ function JoinPageContent() {
                             value={email} 
                             onChange={(e:any) => setEmail(e.target.value)}
                             required
+                            disabled={isLoggedIn} // LOCK EMAIL IF LOGGED IN
                         />
                     </div>
 
@@ -253,10 +279,9 @@ function JoinPageContent() {
   );
 }
 
-// WRAPPER TO FIX NEXT.JS 16 BUILD ERROR
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold">Loading Join Page...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold">Loading...</div>}>
       <JoinPageContent />
     </Suspense>
   );

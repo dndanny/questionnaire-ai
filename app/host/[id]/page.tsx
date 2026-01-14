@@ -94,7 +94,12 @@ export default function RoomDashboard() {
                                                 {sub.studentName?.charAt(0).toUpperCase() || 'G'}
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-lg">{sub.studentName || 'Guest'}</h3>
+                                                <h3 className="font-bold text-lg">{sub.studentName || 'Guest'} 
+         {sub.studentId?.isVerified && (
+             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 border border-green-200">
+               ✅ Verified
+             </span>
+         )}</h3>
                                                 <p className="text-xs text-gray-400">Submitted {new Date(sub.createdAt).toLocaleTimeString()}</p>
                                             </div>
                                         </div>

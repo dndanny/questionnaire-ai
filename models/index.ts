@@ -4,6 +4,9 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   name: String,
+  isVerified: { type: Boolean, default: false },
+  verificationCode: String,
+  verificationExpires: Date,
 }, { timestamps: true });
 
 const RoomSchema = new mongoose.Schema({
@@ -14,8 +17,8 @@ const RoomSchema = new mongoose.Schema({
   quizData: { type: Object },
   config: {
     questionTypes: [String],
-    gradingMode: String, // 'strict' | 'open'
-    markingType: { type: String, default: 'batch' }, // 'instant' | 'batch'
+    gradingMode: String,
+    markingType: { type: String, default: 'batch' },
     counts: Object
   }
 }, { timestamps: true });
@@ -23,11 +26,12 @@ const RoomSchema = new mongoose.Schema({
 const SubmissionSchema = new mongoose.Schema({
   roomId: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
   studentName: String,
-  studentEmail: String, // NEW
+  studentEmail: String,
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Linked User
   answers: Object,
   grades: Object,
   totalScore: { type: Number, default: 0 },
-  status: { type: String, default: 'pending' }, // 'pending' | 'graded'
+  status: { type: String, default: 'pending' },
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
