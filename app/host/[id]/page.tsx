@@ -26,6 +26,7 @@ export default function RoomDashboard() {
         fetchSubmissions();
         const interval = setInterval(fetchSubmissions, 5000); // Live poll
         return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.id]);
 
     const handleBatchGrade = async () => {

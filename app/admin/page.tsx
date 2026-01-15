@@ -14,6 +14,7 @@ export default function AdminDashboard() {
             if (!res.ok) router.push('/admin/login');
             else res.json().then(setData);
         });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleLogout = async () => {

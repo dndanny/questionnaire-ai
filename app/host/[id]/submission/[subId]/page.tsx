@@ -88,7 +88,7 @@ export default function StudentDetail() {
                                     <h3 className="font-bold text-lg mb-2">{q.question}</h3>
                                     <div className="bg-brand-100/50 p-3 rounded-lg border-l-4 border-brand-300">
                                         <p className="text-sm text-gray-500 font-bold mb-1">Student Answer:</p>
-                                        <p className="text-gray-800 italic">"{sub.answers?.[q.id] || '(No Answer)'}"</p>
+                                        <p className="text-gray-800 italic">&quot;{sub.answers?.[q.id] || '(No Answer)'}&quot;</p>
                                     </div>
                                 </div>
 

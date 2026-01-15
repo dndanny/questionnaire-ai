@@ -47,6 +47,7 @@ function JoinPageContent() {
 
   useEffect(() => {
     const urlCode = searchParams.get('code');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (urlCode && code !== urlCode) setCode(urlCode);
 
     // CHECK LOGIN STATUS AUTOMATICALLY
@@ -62,6 +63,7 @@ function JoinPageContent() {
                 setIsLoggedIn(true); // Locks the email field
             }
         });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const joinRoom = async () => {
