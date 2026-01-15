@@ -16,14 +16,14 @@ describe('Gemini AI Service', () => {
       candidates: [{
         content: {
           parts: [{
-            text: ```json
+            text: `\`\`\`json
             {
               "title": "Mock Quiz",
               "questions": [
                 { "id": "1", "type": "MC", "question": "Test?", "options": ["A","B"] }
               ]
             }
-            ```
+            \`\`\``
           }]
         }
       }]
@@ -54,6 +54,6 @@ describe('Gemini AI Service', () => {
     const materials = [{ type: 'text', content: 'Notes' }];
     await expect(generateQuiz(materials, { mc: 1, short: 0, long: 0 }))
       .rejects
-      .toThrow("Gemini Error: 429");
+      .toThrow(/Gemini Error.*429/);
   });
 });

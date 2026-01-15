@@ -4,18 +4,26 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 
 let mongod: MongoMemoryServer;
 
+// Connect to the in-memory database
 export const connect = async () => {
+  // Prevent connecting if already connected (Jest watch mode safety)
+  if (mongoose.connection.readyState !== 0) return;
+  
   mongod = await MongoMemoryServer.create();
   const uri = mongod.getUri();
   await mongoose.connect(uri);
 };
 
+// Drop database, close the connection and stop mongod
 export const closeDatabase = async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
-  await mongod.stop();
+  if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.dropDatabase();
+      await mongoose.connection.close();
+  }
+  if (mongod) await mongod.stop();
 };
 
+// Remove all the data for all db collections
 export const clearDatabase = async () => {
   const collections = mongoose.connection.collections;
   for (const key in collections) {
