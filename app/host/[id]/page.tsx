@@ -13,6 +13,14 @@ export default function RoomDashboard() {
     const [submissions, setSubmissions] = useState<any[]>([]);
          const [grading, setGrading] = useState(false);
 
+    
+    const fetchSubmissions = () => {
+        fetch(`/api/submit?roomId=${params.id}`)
+            .then(r => r.json())
+            .then(setSubmissions);
+    };
+
+
     useEffect(() => {
         fetch(`/api/room?id=${params.id}`).then(r => r.json()).then(setRoom);
         fetchSubmissions();
@@ -28,11 +36,7 @@ export default function RoomDashboard() {
              fetchSubmissions();
          };
          
-         const fetchSubmissions = () => {
-        fetch(`/api/submit?roomId=${params.id}`)
-            .then(r => r.json())
-            .then(setSubmissions);
-    };
+         
 
     if (!room) return <div className="p-10 text-center font-bold">Loading Room...</div>;
 

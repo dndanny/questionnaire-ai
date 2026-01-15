@@ -82,7 +82,7 @@ export default function EditRoom() {
                             {/* Model Answer / Note for AI */}
                             <div className="mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                                 <label className="font-bold text-xs text-yellow-700 uppercase flex items-center gap-2">
-                                    🔑 Teacher's Key / Note for AI
+                                    🔑 Teacher&apos;s Key / Note for AI
                                     <span className="font-normal text-yellow-600 normal-case">(The AI uses this to grade stricter)</span>
                                 </label>
                                 <textarea 

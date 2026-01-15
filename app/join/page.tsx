@@ -47,7 +47,7 @@ function JoinPageContent() {
 
   useEffect(() => {
     const urlCode = searchParams.get('code');
-    if (urlCode) setCode(urlCode);
+    if (urlCode && code !== urlCode) setCode(urlCode);
 
     // CHECK LOGIN STATUS AUTOMATICALLY
     fetch('/api/auth/me')

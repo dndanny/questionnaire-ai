@@ -5,7 +5,7 @@
  */
 
 import * as db from './db-handler';
-import { POST as RoomAction, DELETE as DeleteRoom } from '@/app/api/room/route';
+import { POST as RoomAction, DELETE as DeleteRoom  from '@/app/api/room/route';
 import { POST as AdminAction, GET as AdminGet } from '@/app/api/admin/route';
 import { User, Room } from '@/models';
 import { getSession } from '@/lib/auth';
@@ -96,13 +96,13 @@ describe('Security & Edge Cases', () => {
 
     // We expect the controller to handle it or the AI mock to be called (if we mocked it to accept large inputs)
     // Here we just want to ensure it doesn't crash the NODE process
-    try {
+    
         const res = await RoomAction(req);
         // It might be 200 or 500 depending on mock, but it shouldn't timeout/crash
         expect(res).toBeDefined(); 
-    } catch (e) {
+    
         // If it throws, it's a fail
-        throw e;
+        
     }
   });
 });

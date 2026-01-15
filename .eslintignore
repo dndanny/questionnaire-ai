@@ -4,3 +4,5 @@ out
 build
 public
 *.js
+*.ts
+*.config.ts

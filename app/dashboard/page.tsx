@@ -16,6 +16,19 @@ export default function Dashboard() {
   
   const [loading, setLoading] = useState(true);
 
+  
+  const fetchHostData = async () => {
+      const res = await fetch('/api/room?mode=mine');
+      if (res.ok) setMyRooms(await res.json());
+      setLoading(false);
+  };
+
+  const fetchTakerData = async () => {
+      const res = await fetch('/api/user/submissions');
+      if (res.ok) setMySubmissions(await res.json());
+  };
+
+
   useEffect(() => {
     fetch('/api/auth/me').then(res => {
         if(res.ok) return res.json();
@@ -30,16 +43,9 @@ export default function Dashboard() {
     });
   }, []);
 
-  const fetchHostData = async () => {
-      const res = await fetch('/api/room?mode=mine');
-      if (res.ok) setMyRooms(await res.json());
-      setLoading(false);
-  };
+  
 
-  const fetchTakerData = async () => {
-      const res = await fetch('/api/user/submissions');
-      if (res.ok) setMySubmissions(await res.json());
-  };
+  
 
   const handleDelete = async (e: any, id: string) => {
       e.preventDefault();
@@ -121,7 +127,7 @@ export default function Dashboard() {
                  <h2 className="text-2xl font-black mb-6">Tests Taken</h2>
                  {mySubmissions.length === 0 ? (
                     <div className="text-center py-20 bg-white/50 border-4 border-dashed border-gray-300 rounded-3xl">
-                        <h2 className="text-2xl font-bold text-gray-400 mb-4">You haven't taken any tests yet!</h2>
+                        <h2 className="text-2xl font-bold text-gray-400 mb-4">You haven&apos;t taken any tests yet!</h2>
                         <Link href="/join"><Button variant="secondary">Join a Quiz</Button></Link>
                     </div>
                  ) : (

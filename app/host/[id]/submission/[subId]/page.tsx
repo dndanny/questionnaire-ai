@@ -59,7 +59,7 @@ export default function StudentDetail() {
                 <div className="flex items-center gap-4 mb-6">
                     <Button variant="secondary" onClick={() => router.back()}>← Back</Button>
                     <h1 className="text-2xl font-black flex-1">
-                        {sub.studentName}'s Submission
+                        {sub.studentName}&apos;s Submission
                     </h1>
                     <Card className="px-4 py-2 bg-white flex flex-col items-center">
                         <span className="text-xs text-gray-500 uppercase font-bold">Total Score</span>

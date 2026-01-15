@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         
         // Body: { materials: [{type, content}], counts, config }
-        let { materials, counts, config } = body;
+        const { materials, counts, config } = body;
         
         // Pre-process URLs
         const processedMaterials = await Promise.all(materials.map(async (m: any) => {
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'join') {
-        let { code } = body;
+        const { code } = body;
         if (!code) return NextResponse.json({ error: 'Code missing' }, { status: 400 });
         const room = await Room.findOne({ code: code.trim().toUpperCase() });
         if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
