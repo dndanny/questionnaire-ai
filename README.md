@@ -1,7 +1,9 @@
 # 🧠 Questionnaire AI
 
-> **An Enterprise-Grade, Multimodal Assessment Platform powered by Next.js 16, React 19, and Gemini AI.**
+> **📚 Stop Grading. Start Teaching. ✅ The AI-powered assessment platform built with Next.js 16 & Gemini. 🧠✨**
 
+
+[![CI/CD Pipeline](https://github.com/dndanny/questionnaire-ai/actions/workflows/main.yml/badge.svg)](https://github.com/dndanny/questionnaire-ai/actions)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-Production_Ready-green.svg)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)
@@ -9,11 +11,29 @@
 
 ---
 
-## 📋 Executive Summary
+<br />
 
-**Questionnaire AI** is a SaaS platform designed to automate the entire lifecycle of educational assessment. It solves the "grading bottleneck" in education by leveraging **Multimodal Generative AI** (Text, Image, PDF) to generate context-aware quizzes and perform human-like grading with detailed feedback.
+## 📸 Project Overview
 
-Built on the bleeding edge of the **React ecosystem (React 19 RC, Next.js 16 Canary)**, it features a **Neobrutalist design system**, **real-time optimistic UI updates**, and a robust **asynchronous batch processing architecture** for high-volume grading.
+**Questionnaire AI** solves the "Feedback Lag" in education. It uses Multimodal AI to digest textbooks/PDFs, generate quizzes instantly, and grade students in real-time.
+
+<div align="center">
+  <img src="public/screenshots/dashboard.png" width="30%" alt="Dashboard" />
+  <img src="public/screenshots/create_quest.png" width="30%" alt="Creation" />
+  <img src="public/screenshots/quizroom.png" width="30%" alt="Quiz Room" />
+</div>
+
+<br />
+
+## ✨ Core Features
+
+| Feature | Description | Tech Stack |
+| :--- | :--- | :--- |
+| **📄 Multimodal Ingestion** | Drag-and-drop PDFs, Images, or paste text. The AI "sees" your content. | Gemini 1.5 Vision |
+| **⚡ Hybrid Grading** | Choose **Instant** (Real-time feedback) or **Batch** (Queue 100s of students). | Promise.all / Async |
+| **🛡️ Enterprise Auth** | Secure OTP Email Verification & Role-Based Access (Admin/Host/Student). | JOSE JWT + Nodemailer |
+| **🎨 Neobrutalist UI** | High-contrast, accessible, and animated interface. | Tailwind + Framer Motion |
+
 
 ---
 
@@ -208,8 +228,8 @@ erDiagram
     EMAIL_SENDER=your@gmail.com
     EMAIL_PASSWORD=your_app_password
     NEXT_PUBLIC_URL=http://localhost:3000
-    ADMIN_EMAIL=admin@quizai.com
-    ADMIN_PASSWORD=admin123
+    ADMIN_EMAIL=your_admin@email.com
+    ADMIN_PASSWORD=your_admin_password
     ```
 
 4.  **Run Development Server:**
