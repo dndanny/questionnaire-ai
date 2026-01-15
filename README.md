@@ -1,6 +1,6 @@
 # 🧠 Questionnaire AI
 
-> **📚 Stop Grading. Start Teaching. ✅ The AI-powered assessment platform built with Next.js 16 & Gemini. 🧠✨**
+> **📚 Stop Grading. ✨ Start Teaching. ✅ The AI-powered assessment platform built with Next.js 16 & Gemini. 🧠**
 
 
 [![CI/CD Pipeline](https://github.com/dndanny/questionnaire-ai/actions/workflows/main.yml/badge.svg)](https://github.com/dndanny/questionnaire-ai/actions)
@@ -203,13 +203,13 @@ erDiagram
 *   Node.js v20+
 *   MongoDB Instance
 *   Google Gemini API Key
+*   Email Services
 
 ### Installation
 
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/dndanny/questionnaire-ai.git
-    cd questionnaire-ai
     ```
 
 2.  **Install Dependencies (Legacy Peer Deps required for React 19):**
