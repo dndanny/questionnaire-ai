@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         } catch (e) { contextText = ""; }
 
         // 3. CALL GEMINI ONCE
-        let batchResults = {};
+        let batchResults: any = {};
         try {
             batchResults = await gradeWholeBatch(
                 contextText,
