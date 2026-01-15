@@ -72,21 +72,111 @@ export async function generateQuiz(rawMaterials: any[], counts: { mc: number, sh
   }
 }
 
+
 export async function gradeSubmission(question: string, answer: string, context: string, mode: 'strict' | 'open', modelAnswer?: string) {
   const prompt = `
-    Grade answer (0-10) + feedback JSON.
-    Q: "${question}"
-    Ans: "${answer}"
-    Key: "${modelAnswer}"
-    Context: "${context.substring(0, 5000)}"
-    Mode: ${mode}
+    You are a strict automated grader.
+    Task: Grade the student answer (0-10) and provide brief feedback.
+    
+    Context Info: "${context.substring(0, 8000)}"
+    Question: "${question}"
+    Teacher's Key (If provided, strictly follow this): "${modelAnswer}"
+    Student Answer: "${answer}"
+    Grading Mode: ${mode}
+    
+    CRITICAL OUTPUT RULES:
+    1. Return JSON ONLY.
+    2. "score" MUST be a raw integer between 0 and 10. Do NOT write "10/10" or "10 points". Just "10".
+    3. JSON Format: { "score": 10, "feedback": "Excellent answer." }
   `;
 
   try {
     const rawText = await callGemini([{ text: prompt }]);
     const jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    const result = JSON.parse(jsonStr);
+    
+    // --- SMART SCORE CLEANER ---
+    // Fixes issues where AI returns "10/10" or "10 (Perfect)"
+    let cleanScore = result.score;
+    
+    if (typeof cleanScore === 'string') {
+        // Remove "/10" or non-numeric chars except dots
+        cleanScore = cleanScore.split('/')[0].replace(/[^0-9.]/g, '');
+        cleanScore = Number(cleanScore);
+    }
+    
+    // Final Safety Checks
+    if (isNaN(cleanScore)) cleanScore = 0;
+    if (cleanScore > 10) cleanScore = 10;
+    if (cleanScore < 0) cleanScore = 0;
+    
+    return { score: cleanScore, feedback: result.feedback };
+
+  } catch (e) {
+    console.error("Grading Parse Error:", e);
+    // Return 0 if AI completely fails, but log it
+    return { score: 0, feedback: "AI Error: Could not parse grade." };
+  }
+}
+
+
+// --- BULK GRADING ---
+export async function gradeWholeBatch(
+  materialsContext: string, 
+  questions: any[], 
+  submissions: any[], 
+  config: any
+) {
+  // Construct a highly structured prompt for bulk processing
+  const prompt = {
+    role: "grader",
+    instruction: `You are a high-speed bulk grading engine. 
+    1. Read the Context and the Question Answer Key.
+    2. Grade EVERY student submission in the list.
+    3. Return a JSON object mapped by Submission ID.
+    4. Feedback must be concise (1-2 sentences).`,
+    gradingMode: config.gradingMode || 'strict',
+    context: materialsContext.substring(0, 20000), // Truncate context to save space
+    questions: questions.map((q: any) => ({
+      id: q.id,
+      text: q.question,
+      modelAnswer: q.modelAnswer || "N/A",
+      type: q.type
+    })),
+    studentSubmissions: submissions.map((sub: any) => ({
+      submissionId: sub._id,
+      answers: sub.answers
+    }))
+  };
+
+  const finalPrompt = `
+    ${JSON.stringify(prompt, null, 2)}
+    
+    -----------------------------------
+    OUTPUT REQUIREMENT:
+    Return valid JSON ONLY. No markdown.
+    Structure:
+    {
+      "submission_id_1": {
+        "question_id_1": { "score": 10, "feedback": "Good job" },
+        "question_id_2": { "score": 5, "feedback": "Missing key details" }
+      },
+      "submission_id_2": ...
+    }
+    Rules: 
+    - Score must be 0-10 (integer).
+    - If answer is missing, score 0.
+  `;
+
+  console.log(`[Gemini] Sending Bulk Batch: ${submissions.length} students...`);
+
+  try {
+    const rawText = await callGemini([{ text: finalPrompt }]);
+    const jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(jsonStr);
   } catch (e) {
-    return { score: 0, feedback: "Error grading." };
+    console.error("Batch Gemini Failed:", e);
+    throw new Error("AI failed to process batch. Try grading individually.");
   }
 }

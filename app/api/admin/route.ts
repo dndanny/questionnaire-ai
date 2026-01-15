@@ -12,16 +12,31 @@ async function isAdmin() {
     return c.get('admin_token')?.value === 'secret_admin_pass';
 }
 
+// LOGIN
 export async function POST(req: Request) {
     const { email, password } = await req.json();
     
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        (await cookies()).set('admin_token', 'secret_admin_pass', { httpOnly: true });
+        // Create a SESSION cookie (no maxAge/expires). 
+        // Browsers clear this automatically when the tab/window is closed.
+        (await cookies()).set('admin_token', 'secret_admin_pass', { 
+            httpOnly: true,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
         return NextResponse.json({ success: true });
     }
     return NextResponse.json({ error: 'Invalid Credentials' }, { status: 401 });
 }
 
+// LOGOUT
+export async function DELETE(req: Request) {
+    (await cookies()).delete('admin_token');
+    return NextResponse.json({ success: true });
+}
+
+// GET DASHBOARD DATA
 export async function GET(req: Request) {
     if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
@@ -38,14 +53,23 @@ export async function GET(req: Request) {
         return NextResponse.json({ user, stats: { hostedRooms, takenQuizzes } });
     }
 
-    // Dashboard Data
-    const totalUsers = await User.countDocuments();
+    // --- AGGREGATED STATS ---
+    
+    // 1. Registered Users (Verified + Unverified)
+    const registeredCount = await User.countDocuments();
+    
+    // 2. Distinct Guests (People who submitted without an account)
+    // We count unique emails in submissions where studentId is null
+    const distinctGuests = await Submission.distinct('studentEmail', { studentId: null });
+    
+    // Total "Users" = Registered Accounts + Unique Guests
+    const totalUsers = registeredCount + distinctGuests.length;
+
     const verifiedUsers = await User.find({ isVerified: true }).select('-password').sort({ createdAt: -1 });
     const totalAttempts = await Submission.countDocuments();
     const totalQuizzes = await Room.countDocuments();
     
-    // Unverified/Guest Takers (Submissions without studentId or studentId not verified)
-    // For simplicity, we list guest submissions (no studentId)
+    // Unverified/Guest Takers List
     const guestSubmissions = await Submission.find({ studentId: null }).select('studentName studentEmail createdAt').sort({ createdAt: -1 }).limit(50);
 
     return NextResponse.json({

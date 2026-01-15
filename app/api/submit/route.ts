@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import { Submission, Room, User } from '@/models'; // Import User to ensure model is registered
+import { Submission, Room } from '@/models';
 import { getSession } from '@/lib/auth';
 import { gradeSubmission } from '@/lib/gemini';
 import { sendGradeEmail } from '@/lib/email';
@@ -10,7 +10,6 @@ export async function GET(req: Request) {
     const roomId = searchParams.get('roomId');
     await dbConnect();
     
-    // POPULATE studentId to get verification status
     const subs = await Submission.find({ roomId })
         .populate('studentId', 'name email isVerified')
         .sort({ createdAt: -1 });
@@ -36,7 +35,7 @@ export async function PATCH(req: Request) {
 
         if (sub.studentEmail) {
              const room = sub.roomId;
-             await sendGradeEmail(sub.studentEmail, sub.studentName, room?.quizData?.title || 'Quiz', total, room?.quizData?.questions?.length * 10, 'http://localhost:3000');
+             await sendGradeEmail(sub.studentEmail, sub.studentName, room?.quizData?.title || 'Quiz', total, room?.quizData?.questions?.length * 10, (process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'));
         }
     }
     return NextResponse.json({ success: true, submission: sub });
@@ -45,6 +44,24 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
   const session = await getSession();
   const { roomId, studentName, studentEmail, answers } = await req.json();
+  
+  // Capture IP from Headers
+  
+  // Capture IP (Robust for Localhost + Vercel)
+  const forwarded = req.headers.get('x-forwarded-for');
+  let ipAddress = forwarded ? forwarded.split(',')[0] : (req.headers.get('x-real-ip') || 'Unknown IP');
+  
+  // Clean up Localhost IPv6
+  if (ipAddress === '::1' || ipAddress === '::ffff:127.0.0.1') {
+      ipAddress = '127.0.0.1 (Localhost)';
+  }
+  
+  // Fallback for local development if headers are missing entirely
+  if (process.env.NODE_ENV === 'development' && ipAddress === 'Unknown IP') {
+      ipAddress = '127.0.0.1 (Dev Env)';
+  }
+
+
   await dbConnect();
 
   const room = await Room.findById(roomId);
@@ -55,6 +72,7 @@ export async function POST(req: Request) {
       studentName,
       studentEmail,
       studentId: session ? session.id : undefined,
+      ipAddress, // Save IP
       answers,
       grades: {} as any,
       totalScore: 0,
@@ -82,7 +100,7 @@ export async function POST(req: Request) {
       const sub = await Submission.create(submissionData);
       
       if (studentEmail) {
-         sendGradeEmail(studentEmail, studentName, room.quizData?.title || 'Quiz', totalScore, room.quizData.questions.length * 10, 'http://localhost:3000');
+         sendGradeEmail(studentEmail, studentName, room.quizData?.title || 'Quiz', totalScore, room.quizData.questions.length * 10, (process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'));
       }
 
       return NextResponse.json({ success: true, grades: submissionData.grades, totalScore, status: 'graded' });

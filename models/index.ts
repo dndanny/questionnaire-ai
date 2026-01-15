@@ -27,7 +27,8 @@ const SubmissionSchema = new mongoose.Schema({
   roomId: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
   studentName: String,
   studentEmail: String,
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Linked User
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  ipAddress: String, // NEW FIELD
   answers: Object,
   grades: Object,
   totalScore: { type: Number, default: 0 },

@@ -64,6 +64,12 @@ export default function StudentDetail() {
                     <Card className="px-4 py-2 bg-white flex flex-col items-center">
                         <span className="text-xs text-gray-500 uppercase font-bold">Total Score</span>
                         <span className="text-2xl font-black text-brand-500">{sub.totalScore}</span>
+        </Card>
+        
+        {/* IP Info Card */}
+        <Card className="px-4 py-2 bg-gray-50 flex flex-col items-center justify-center border-dashed border-2 border-gray-300">
+             <span className="text-xs text-gray-400 uppercase font-bold">Location IP</span>
+             <span className="text-sm font-mono font-bold text-gray-700">{sub.ipAddress || 'N/A'}</span>
                     </Card>
                 </div>
 

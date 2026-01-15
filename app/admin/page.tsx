@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button } from '@/components/ui';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, XCircle, Users, FileText, Activity, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Users, FileText, Activity, LogOut } from 'lucide-react';
 
 export default function AdminDashboard() {
     const [data, setData] = useState<any>(null);
@@ -16,6 +16,11 @@ export default function AdminDashboard() {
         });
     }, []);
 
+    const handleLogout = async () => {
+        await fetch('/api/admin', { method: 'DELETE' });
+        router.push('/admin/login');
+    };
+
     const fetchUserDetails = async (id: string) => {
         const res = await fetch(`/api/admin?userId=${id}`);
         if (res.ok) setSelectedUser(await res.json());
@@ -27,15 +32,23 @@ export default function AdminDashboard() {
         <div className="min-h-screen bg-gray-100 p-6 md:p-10 font-sans text-gray-800">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-10">
-                    <h1 className="text-4xl font-black text-gray-900">Admin Dashboard</h1>
-                    <div className="bg-green-100 text-green-800 px-4 py-1 rounded-full font-bold border border-green-200">
-                        System Active
+                    <div>
+                        <h1 className="text-4xl font-black text-gray-900">Admin Dashboard</h1>
+                        <p className="text-gray-500 font-medium">System Overview</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="bg-green-100 text-green-800 px-4 py-1 rounded-full font-bold border border-green-200">
+                            Active
+                        </div>
+                        <Button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2">
+                            <LogOut size={18} /> Sign Out
+                        </Button>
                     </div>
                 </div>
 
                 {/* STATS */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                    <StatCard icon={<Users />} label="Total Users" value={data.stats.totalUsers} />
+                    <StatCard icon={<Users />} label="Total Users (Reg + Guest)" value={data.stats.totalUsers} />
                     <StatCard icon={<Activity />} label="Quiz Attempts" value={data.stats.totalAttempts} />
                     <StatCard icon={<FileText />} label="Quizzes Generated" value={data.stats.totalQuizzes} />
                 </div>
@@ -49,9 +62,9 @@ export default function AdminDashboard() {
                             <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                 <CheckCircle className="text-brand-500" /> Verified Users
                             </h2>
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto max-h-96">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                    <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0">
                                         <tr>
                                             <th className="p-3">Name</th>
                                             <th className="p-3">Email</th>
@@ -82,9 +95,9 @@ export default function AdminDashboard() {
                             <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                 <XCircle className="text-gray-400" /> Guest / Unverified Takers
                             </h2>
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto max-h-96">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                    <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0">
                                         <tr>
                                             <th className="p-3">Student Name</th>
                                             <th className="p-3">Contact Email</th>

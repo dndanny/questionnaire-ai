@@ -2,71 +2,111 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import { Submission, Room } from '@/models';
 import { getSession } from '@/lib/auth';
-import { gradeSubmission } from '@/lib/gemini';
+import { gradeWholeBatch } from '@/lib/gemini';
 import { sendGradeEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const { roomId } = await req.json();
-    await dbConnect();
-    const room = await Room.findById(roomId);
+    try {
+        const { roomId } = await req.json();
+        await dbConnect();
+        
+        const room = await Room.findById(roomId);
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
 
-    // Find all pending submissions
-    const pendingSubs = await Submission.find({ roomId, status: 'pending' });
+        // 1. Fetch Pending Submissions
+        const pendingSubs = await Submission.find({ roomId, status: 'pending' });
+        
+        if (pendingSubs.length === 0) {
+            return NextResponse.json({ message: 'No pending submissions.' });
+        }
 
-    if (pendingSubs.length === 0) {
-        return NextResponse.json({ message: 'No pending submissions to grade.' });
-    }
+        console.log(`[Batch] Aggregating ${pendingSubs.length} submissions for single-shot grading.`);
 
-    // Process all in parallel
-    // In a real app, this should be a queue/worker (Redis). 
-    // For MVP, we do Promise.all but limit concurrency if needed.
-    
-    let processed = 0;
+        // 2. Prepare Context (Flatten materials)
+        let contextText = "";
+        try {
+            contextText = room.materials.map((m: string) => {
+                try { return JSON.parse(m).content || ""; } catch { return m; }
+            }).join('\n');
+        } catch (e) { contextText = ""; }
 
-    await Promise.all(pendingSubs.map(async (sub) => {
-        const grades: any = {};
-        let totalScore = 0;
+        // 3. CALL GEMINI ONCE
+        let batchResults = {};
+        try {
+            batchResults = await gradeWholeBatch(
+                contextText,
+                room.quizData.questions,
+                pendingSubs,
+                room.config
+            );
+        } catch (aiError: any) {
+            return NextResponse.json({ error: aiError.message }, { status: 500 });
+        }
 
-        // Grade each question
-        const gradePromises = room.quizData.questions.map(async (q: any) => {
-             const ans = sub.answers[q.id];
-             if (ans) {
-                 const result = await gradeSubmission(
-                     q.question, 
-                     ans, 
-                     room.materials.join(' '), 
-                     room.config?.gradingMode || 'strict',
-                     q.modelAnswer
-                 );
-                 grades[q.id] = result;
-                 totalScore += result.score;
-             }
+        // 4. Distribute Results Back to DB
+        let processedCount = 0;
+        
+        // We use a loop to save concurrently
+        const savePromises = pendingSubs.map(async (sub) => {
+            const resultKey = sub._id.toString();
+            const gradesData = batchResults[resultKey]; // The AI output for this student
+
+            if (!gradesData) {
+                console.error(`[Batch] Missing AI result for student ${sub.studentName}`);
+                return;
+            }
+
+            // Calculate Total Score & Sanitize
+            let totalScore = 0;
+            const sanitizedGrades: any = {};
+
+            Object.keys(gradesData).forEach((qId) => {
+                const raw = gradesData[qId];
+                let s = Number(raw.score);
+                if (isNaN(s)) s = 0;
+                if (s > 10) s = 10;
+                
+                sanitizedGrades[qId] = {
+                    score: s,
+                    feedback: raw.feedback || "Graded via Batch AI"
+                };
+                totalScore += s;
+            });
+
+            // Save to DB
+            sub.grades = sanitizedGrades;
+            sub.totalScore = totalScore;
+            sub.status = 'graded';
+            await sub.save();
+            processedCount++;
+
+            // Email Notification (Fire and forget)
+            if (sub.studentEmail) {
+                const publicUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
+                sendGradeEmail(
+                    sub.studentEmail, 
+                    sub.studentName, 
+                    room.quizData?.title || 'Quiz', 
+                    totalScore, 
+                    room.quizData.questions.length * 10, 
+                    `${publicUrl}/join?code=${room.code}`
+                ).catch(e => console.error("Email fail:", e));
+            }
         });
 
-        await Promise.all(gradePromises);
+        await Promise.all(savePromises);
 
-        // Update DB
-        sub.grades = grades;
-        sub.totalScore = totalScore;
-        sub.status = 'graded';
-        await sub.save();
-        processed++;
+        return NextResponse.json({ 
+            success: true, 
+            processed: processedCount,
+            message: `Batch Complete. ${processedCount} students graded in one AI call.`
+        });
 
-        // Send Email
-        if (sub.studentEmail) {
-            await sendGradeEmail(
-                sub.studentEmail, 
-                sub.studentName, 
-                room.quizData?.title || 'Quiz', 
-                totalScore, 
-                room.quizData.questions.length * 10, 
-                'http://localhost:3000'
-            );
-        }
-    }));
-
-    return NextResponse.json({ success: true, processed });
+    } catch (e: any) {
+        console.error("[Batch] Error:", e);
+        return NextResponse.json({ error: e.message || 'Server Error' }, { status: 500 });
+    }
 }
