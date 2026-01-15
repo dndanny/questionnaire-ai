@@ -1,18 +1,16 @@
-
 /**
  * @file unit.security.test.ts
  * @description Security boundaries, input validation, and robust error handling.
  */
 
 import * as db from './db-handler';
-import { POST as RoomAction, DELETE as DeleteRoom  from '@/app/api/room/route';
+import { POST as RoomAction, DELETE as DeleteRoom } from '@/app/api/room/route';
 import { POST as AdminAction, GET as AdminGet } from '@/app/api/admin/route';
 import { User, Room } from '@/models';
 import { getSession } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 // MOCK DB CONNECTION to prevent "Multiple Connections" error
-// The test runner already connects to MongoMemoryServer, so the API route should assume it's connected.
 jest.mock('@/lib/db', () => ({
   __esModule: true,
   default: jest.fn().mockResolvedValue(true)
@@ -80,9 +78,9 @@ describe('Security & Edge Cases', () => {
   });
 
   it('Handles extremely large payloads (DoS prevention attempt)', async () => {
-    // Ideally this is handled by Next.js body parser limits, but good to test logic doesn't crash
     const hugeString = "a".repeat(1000000); // 1MB string
     
+    // Use a valid 24-char hex string for ObjectId to avoid CastError
     (getSession as jest.Mock).mockResolvedValue({ id: '507f1f77bcf86cd799439011' });
 
     const req = new Request('http://localhost/api/room', {
@@ -94,15 +92,7 @@ describe('Security & Edge Cases', () => {
         })
     });
 
-    // We expect the controller to handle it or the AI mock to be called (if we mocked it to accept large inputs)
-    // Here we just want to ensure it doesn't crash the NODE process
-    
-        const res = await RoomAction(req);
-        // It might be 200 or 500 depending on mock, but it shouldn't timeout/crash
-        expect(res).toBeDefined(); 
-    
-        // If it throws, it's a fail
-        
-    }
+    const res = await RoomAction(req);
+    expect(res).toBeDefined(); 
   });
 });
