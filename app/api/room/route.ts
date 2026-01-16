@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import { Room, Submission } from '@/models';
+import { Room, Submission, User } from '@/models';
 import { getSession } from '@/lib/auth';
 import { generateQuiz } from '@/lib/gemini';
+
+// Allow longer processing for large AI payloads
+export const maxDuration = 60; // 60 seconds (Max for Vercel Hobby)
+export const dynamic = 'force-dynamic';
 
 // Helper to scrape text from URL (basic fetch)
 async function fetchUrlText(url: string) {
   try {
     const res = await fetch(url);
     const html = await res.text();
-    // Very naive strip tags - in prod use cheerio or puppeteer
     return html.replace(/<[^>]*>?/gm, ' ').substring(0, 10000);
-  } catch (e) {
-    return "Error fetching URL content.";
-  }
+  } catch (e) { return "Error fetching URL content."; }
 }
 
 export async function POST(req: Request) {
@@ -26,39 +27,73 @@ export async function POST(req: Request) {
     if (body.action === 'create') {
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         
-        // Body: { materials: [{type, content}], counts, config }
-        const { materials, counts, config } = body;
         
-        // Pre-process URLs
-        const processedMaterials = await Promise.all(materials.map(async (m: any) => {
-            if (m.type === 'url') {
-                const text = await fetchUrlText(m.content);
-                return { type: 'url_content', content: `Content from ${m.content}: 
- ${text}` };
-            }
-            return m;
-        }));
+        let { materials, blueprint, counts, config, manual } = body;
+        
+        const user = await User.findById(session.id);
 
-        const quizData = await generateQuiz(processedMaterials, counts);
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        if (!manual) {
+            if (user.aiUsage >= user.aiLimit) {
+                return NextResponse.json({ error: `AI Limit Reached (${user.aiUsage}/${user.aiLimit}). Create manually or contact admin.` }, { status: 403 });
+            }
+        }
+
+        let quizData;
         
-        // We store heavy materials (images) in DB? 
-        // Warning: Mongo has 16MB limit. For production, upload images to S3 and store URL.
-        // For this local demo, we keep base64 but be careful.
+        if (manual) {
+            quizData = { title: "New Manual Quiz", questions: [] };
+        } else {
+            // Process Content
+            // Process Content
+            const processedMaterials = await Promise.all(materials.map(async (m: any) => {
+                if (m.type === 'url') {
+                    const text = await fetchUrlText(m.content);
+                    return { type: 'url_content', content: `Content from ${m.content}: \n ${text.substring(0, 50000)}` };
+                }
+                // Truncate Text/PDF content to prevent Timeout/Payload errors
+                if (m.type === 'text' && m.content.length > 50000) {
+                    console.log(`[Truncating] Material too long (${m.content.length} chars). Trimming to 50000.`);
+                    return { ...m, content: m.content.substring(0, 50000) + "...(truncated)" };
+                }
+                return m;
+            }));
+
+            // Process Blueprint (Optional)
+            let processedBlueprint = [];
+            if (blueprint && Array.isArray(blueprint)) {
+                processedBlueprint = await Promise.all(blueprint.map(async (m: any) => {
+                    if (m.type === 'url') {
+                        const text = await fetchUrlText(m.content);
+                        return { type: 'url_content', content: `Blueprint from ${m.content}: 
+ ${text}` };
+                    }
+                    return m;
+                }));
+            }
+            
+            // Pass both to Gemini
+            quizData = await generateQuiz(processedMaterials, counts, processedBlueprint);
+            
+            await User.findByIdAndUpdate(session.id, { $inc: { aiUsage: 1 } });
+        }
+
+
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         
         const room = await Room.create({
             hostId: session.id,
             code,
-            materials: processedMaterials.map((m: any) => JSON.stringify(m)), // Store as stringified JSON objects
+            materials: manual ? [] : materials.map((m: any) => JSON.stringify(m)),
             quizData,
             config: { ...config, counts },
             isActive: true
         });
+        
         return NextResponse.json({ roomCode: code, roomId: room._id });
     }
 
     if (body.action === 'join') {
-        const { code } = body;
+        let { code } = body;
         if (!code) return NextResponse.json({ error: 'Code missing' }, { status: 400 });
         const room = await Room.findOne({ code: code.trim().toUpperCase() });
         if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
@@ -72,12 +107,11 @@ export async function POST(req: Request) {
   }
 }
 
-// ... Keep existing GET/DELETE/PATCH ...
+// ... Keep GET/DELETE/PATCH as they were ...
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   const mode = searchParams.get('mode');
-  
   await dbConnect();
   
   if (mode === 'mine') {

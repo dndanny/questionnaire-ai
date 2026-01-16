@@ -15,7 +15,11 @@ async function callGemini(parts: any[]) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts }],
-      generationConfig: { response_mime_type: "application/json" }
+      generationConfig: { 
+        response_mime_type: "application/json",
+        max_output_tokens: 8192, // Maximize output length
+        temperature: 0.7 
+      }
     })
   });
 
@@ -31,48 +35,73 @@ async function callGemini(parts: any[]) {
   return text;
 }
 
-export async function generateQuiz(rawMaterials: any[], counts: { mc: number, short: number, long: number }) {
+
+export async function generateQuiz(
+  rawMaterials: any[], 
+  counts: { mc: number, short: number, long: number },
+  blueprintMaterials: any[] = [] // NEW PARAM
+) {
   const total = counts.mc + counts.short + counts.long;
   const parts: any[] = [];
   
-  // System Instruction
-  parts.push({
-    text: `You are a quiz generator. Return valid JSON only.
+  // 1. System Instruction
+  let instruction = `You are a professional exam creator. Return valid JSON only.
     Structure: { "title": "string", "questions": [ { "id": "1", "type": "MC|Short|Long", "question": "...", "options": ["A","B"] (if MC), "modelAnswer": "key points" } ] }
     Requirements: ${counts.mc} MC, ${counts.short} Short, ${counts.long} Long. Total ${total} questions.
-    Analyze the provided text, images, and documents (PDFs) to generate questions.
-    If multiple files are provided, combine knowledge from all of them.`
-  });
+    
+    INSTRUCTIONS:
+    1. Use the [CONTENT MATERIALS] as the source of knowledge/facts.
+    2. Use the [BLUEPRINT/STYLE MATERIALS] (if present) to determine the difficulty, question style, phrasing, and format.
+    If Blueprint contains "hard" questions, generate hard questions from the Content.
+  `;
 
-  // Add all files/resources to the prompt payload
+  parts.push({ text: instruction });
+
+  // 2. Add Blueprint Materials (if any)
+  if (blueprintMaterials && blueprintMaterials.length > 0) {
+      parts.push({ text: "\n--- [BLUEPRINT/STYLE MATERIALS START] ---\n(Use this for Style/Format only)" });
+      for (const mat of blueprintMaterials) {
+        if (mat.type === 'text' || mat.type === 'url_content') {
+            parts.push({ text: mat.content.substring(0, 10000) });
+        } else if (mat.type === 'image' || mat.type === 'pdf') {
+            const base64Data = mat.content.split(',')[1];
+            const mimeType = mat.content.split(';')[0].split(':')[1];
+            parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
+        }
+      }
+      parts.push({ text: "\n--- [BLUEPRINT/STYLE MATERIALS END] ---\n" });
+  }
+
+  // 3. Add Content Materials
+  parts.push({ text: "\n--- [CONTENT MATERIALS START] ---\n(Use this for Facts/Knowledge)" });
   for (const mat of rawMaterials) {
     if (mat.type === 'text' || mat.type === 'url_content') {
         parts.push({ text: mat.content.substring(0, 30000) });
-    } 
-    else if (mat.type === 'image' || mat.type === 'pdf') {
+    } else if (mat.type === 'image' || mat.type === 'pdf') {
         const base64Data = mat.content.split(',')[1];
         const mimeType = mat.content.split(';')[0].split(':')[1];
-        
-        parts.push({
-            inline_data: {
-                mime_type: mimeType,
-                data: base64Data
-            }
-        });
+        parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
     }
   }
+  parts.push({ text: "\n--- [CONTENT MATERIALS END] ---\n" });
 
   try {
     const rawText = await callGemini(parts);
     const jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(jsonStr);
+    const result = JSON.parse(jsonStr);
+
+    // VALIDATION: Ensure we actually got questions
+    if (!result.questions || !Array.isArray(result.questions) || result.questions.length === 0) {
+        throw new Error("AI returned 0 questions. The content might be too complex or too long. Try reducing the material.");
+    }
+
+    return result;
+
   } catch (e) {
     console.error("Quiz Gen Failed:", e);
     throw e;
   }
 }
-
-
 export async function gradeSubmission(question: string, answer: string, context: string, mode: 'strict' | 'open', modelAnswer?: string) {
   const prompt = `
     You are a strict automated grader.

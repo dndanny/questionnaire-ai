@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import { Submission, Room } from '@/models';
+import { Submission, Room, User } from '@/models';
 import { getSession } from '@/lib/auth';
 import { gradeWholeBatch } from '@/lib/gemini';
 import { sendGradeEmail } from '@/lib/email';
@@ -13,19 +13,24 @@ export async function POST(req: Request) {
         const { roomId } = await req.json();
         await dbConnect();
         
+        // 1. CHECK AI QUOTA
+        const user = await User.findById(session.id);
+        if (user.aiUsage >= user.aiLimit) {
+            return NextResponse.json({ error: 'AI Limit Reached. Contact Admin.' }, { status: 403 });
+        }
+
         const room = await Room.findById(roomId);
         if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
 
-        // 1. Fetch Pending Submissions
+        // 2. FETCH PENDING
         const pendingSubs = await Submission.find({ roomId, status: 'pending' });
-        
         if (pendingSubs.length === 0) {
             return NextResponse.json({ message: 'No pending submissions.' });
         }
 
         console.log(`[Batch] Aggregating ${pendingSubs.length} submissions for single-shot grading.`);
 
-        // 2. Prepare Context (Flatten materials)
+        // 3. PREPARE CONTEXT
         let contextText = "";
         try {
             contextText = room.materials.map((m: string) => {
@@ -33,7 +38,7 @@ export async function POST(req: Request) {
             }).join('\n');
         } catch (e) { contextText = ""; }
 
-        // 3. CALL GEMINI ONCE
+        // 4. CALL GEMINI (ONE TIME)
         let batchResults: any = {};
         try {
             batchResults = await gradeWholeBatch(
@@ -42,24 +47,25 @@ export async function POST(req: Request) {
                 pendingSubs,
                 room.config
             );
+            
+            // 5. INCREMENT QUOTA (Only on success)
+            await User.findByIdAndUpdate(session.id, { $inc: { aiUsage: 1 } });
+
         } catch (aiError: any) {
             return NextResponse.json({ error: aiError.message }, { status: 500 });
         }
 
-        // 4. Distribute Results Back to DB
+        // 6. SAVE RESULTS
         let processedCount = 0;
-        
-        // We use a loop to save concurrently
         const savePromises = pendingSubs.map(async (sub) => {
             const resultKey = sub._id.toString();
-            const gradesData = batchResults[resultKey]; // The AI output for this student
+            const gradesData = batchResults[resultKey];
 
             if (!gradesData) {
-                console.error(`[Batch] Missing AI result for student ${sub.studentName}`);
+                console.error(`[Batch] Missing AI result for ${sub.studentName}`);
                 return;
             }
 
-            // Calculate Total Score & Sanitize
             let totalScore = 0;
             const sanitizedGrades: any = {};
 
@@ -67,7 +73,7 @@ export async function POST(req: Request) {
                 const raw = gradesData[qId];
                 let s = Number(raw.score);
                 if (isNaN(s)) s = 0;
-                if (s > 10) s = 10;
+                if (s > 10) s = 10; // Cap score
                 
                 sanitizedGrades[qId] = {
                     score: s,
@@ -76,14 +82,13 @@ export async function POST(req: Request) {
                 totalScore += s;
             });
 
-            // Save to DB
             sub.grades = sanitizedGrades;
             sub.totalScore = totalScore;
             sub.status = 'graded';
             await sub.save();
             processedCount++;
 
-            // Email Notification (Fire and forget)
+            // Email Notification
             if (sub.studentEmail) {
                 const publicUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
                 sendGradeEmail(
@@ -102,7 +107,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ 
             success: true, 
             processed: processedCount,
-            message: `Batch Complete. ${processedCount} students graded in one AI call.`
+            message: `Batch Complete. ${processedCount} graded. Usage: ${user.aiUsage + 1}/${user.aiLimit}`
         });
 
     } catch (e: any) {

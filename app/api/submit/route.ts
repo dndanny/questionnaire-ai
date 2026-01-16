@@ -20,25 +20,58 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    await dbConnect();
-    const { submissionId, questionId, newScore } = await req.json();
-    const sub = await Submission.findById(submissionId).populate('roomId');
-    if (!sub) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    
+    try {
+        await dbConnect();
+        const body = await req.json();
+        const { submissionId, questionId, newScore, status } = body;
+        
+        const sub = await Submission.findById(submissionId).populate('roomId');
+        if (!sub) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    if (sub.grades && sub.grades[questionId]) {
+        // --- SCENARIO 1: UPDATE STATUS (Finalize) ---
+        if (status) {
+            sub.status = status;
+            await sub.save();
+            
+            // Optional: Send "Grading Complete" email
+            if (sub.studentEmail && status === 'graded') {
+                 const room = sub.roomId;
+                 const publicUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
+                 sendGradeEmail(
+                    sub.studentEmail, 
+                    sub.studentName, 
+                    room?.quizData?.title || 'Quiz', 
+                    sub.totalScore, 
+                    (room?.quizData?.questions?.length || 0) * 10, 
+                    `${publicUrl}/join?code=${room.code}`
+                 ).catch(console.error);
+            }
+            return NextResponse.json({ success: true, submission: sub });
+        }
+
+        // --- SCENARIO 2: UPDATE SCORE (Existing Logic) ---
+        if (!sub.grades) sub.grades = {};
+        if (!sub.grades[questionId]) sub.grades[questionId] = { score: 0, feedback: "Graded by Host" };
+
         sub.grades[questionId].score = Number(newScore);
         sub.markModified('grades');
+        
         let total = 0;
-        Object.values(sub.grades).forEach((g: any) => total += (g.score || 0));
+        if (sub.grades) Object.values(sub.grades).forEach((g: any) => total += (Number(g.score) || 0));
         sub.totalScore = total;
+        
         await sub.save();
 
-        if (sub.studentEmail) {
-             const room = sub.roomId;
-             await sendGradeEmail(sub.studentEmail, sub.studentName, room?.quizData?.title || 'Quiz', total, room?.quizData?.questions?.length * 10, (process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'));
-        }
+        // Note: We removed the automatic email on *every* score edit to reduce spam, 
+        // relying on the "Mark as Graded" button for the final notification.
+        
+        return NextResponse.json({ success: true, submission: sub });
+
+    } catch (e: any) {
+        console.error("Patch Error:", e);
+        return NextResponse.json({ error: e.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, submission: sub });
 }
 
 export async function POST(req: Request) {

@@ -43,16 +43,26 @@ export default function AuthPage() {
     setLoading(false);
   };
 
+  
   const handleVerify = async () => {
     setLoading(true);
     const res = await fetch('/api/auth/action', {
         method: 'POST',
         body: JSON.stringify({ action: 'verify', email: formData.email, code: otp })
     });
-    if (res.ok) { router.push('/dashboard'); router.refresh(); }
-    else { alert((await res.json()).error); }
+    const data = await res.json();
+    
+    if (res.ok) { 
+        router.push('/dashboard'); 
+        router.refresh(); 
+    } else { 
+        alert(data.error);
+        setOtp(''); // Clear input so they can retry
+        // We DO NOT change 'step', so it stays on the verify screen
+    }
     setLoading(false);
   };
+
 
   const handleForgotRequest = async () => {
       setLoading(true);

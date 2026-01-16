@@ -27,17 +27,39 @@ export default function StudentDetail() {
             });
     }, [params.id, params.subId]);
 
+    
+    const handleFinalize = async () => {
+        if (!sub) return;
+        const res = await fetch('/api/submit', {
+            method: 'PATCH',
+            body: JSON.stringify({ submissionId: sub._id, status: 'graded' })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            setSub(data.submission);
+            alert("Grading marked as Complete! Email sent to student.");
+        }
+    };
+
     const handleEditGrade = async () => {
         if (!editing) return;
         
         // Optimistic UI update
         const newScoreNum = Number(editVal);
-        const oldScore = sub.grades[editing.qId].score;
+        // FAIL-SAFE: Check if grade exists
+        const oldScore = sub.grades?.[editing.qId]?.score || 0;
         
         // Update local state first
         const updatedSub = { ...sub };
+        
+        // Init grade object if missing (Common in Manual Mode)
+        if (!updatedSub.grades) updatedSub.grades = {};
+        if (!updatedSub.grades[editing.qId]) {
+            updatedSub.grades[editing.qId] = { score: 0, feedback: "Manually Graded" };
+        }
+
         updatedSub.grades[editing.qId].score = newScoreNum;
-        updatedSub.totalScore = updatedSub.totalScore - oldScore + newScoreNum;
+        updatedSub.totalScore = (updatedSub.totalScore || 0) - oldScore + newScoreNum;
         setSub(updatedSub);
         setEditing(null);
 
@@ -61,10 +83,26 @@ export default function StudentDetail() {
                     <h1 className="text-2xl font-black flex-1">
                         {sub.studentName}&apos;s Submission
                     </h1>
+                    
+                <div className="flex items-center gap-4">
+                    
+                    <div className="flex flex-col items-end gap-2">
+                        {sub.status === 'pending' ? (
+                            <Button onClick={handleFinalize} className="bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 shadow-sm">
+                                ✅ Mark as Graded
+                            </Button>
+                        ) : (
+                            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200">
+                                Status: Graded
+                            </span>
+                        )}
+                    </div>
+
                     <Card className="px-4 py-2 bg-white flex flex-col items-center">
                         <span className="text-xs text-gray-500 uppercase font-bold">Total Score</span>
                         <span className="text-2xl font-black text-brand-500">{sub.totalScore}</span>
-        </Card>
+                    </Card>
+                </div>
         
         {/* IP Info Card */}
         <Card className="px-4 py-2 bg-gray-50 flex flex-col items-center justify-center border-dashed border-2 border-gray-300">
@@ -108,7 +146,7 @@ export default function StudentDetail() {
                                                         autoFocus
                                                         type="number" 
                                                         className="w-16 p-1 text-center font-bold border-2 border-brand-500 rounded"
-                                                        value={editVal}
+                                                        value={editVal ?? ''}
                                                         onChange={e => setEditVal(e.target.value)}
                                                     />
                                                     <div className="flex gap-1">
@@ -119,7 +157,7 @@ export default function StudentDetail() {
                                             ) : (
                                                 <div 
                                                     onClick={() => {
-                                                        setEditVal(grade?.score);
+                                                        setEditVal(grade?.score ?? '');
                                                         setEditing({ qId: q.id });
                                                     }}
                                                     className="group cursor-pointer text-center"
