@@ -11,16 +11,18 @@ export default function AdminDashboard() {
     const [userLimit, setUserLimit] = useState('');
     const router = useRouter();
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
     const loadData = () => {
         fetch('/api/admin').then(res => {
             if (!res.ok) router.push('/admin/login');
             else res.json().then(setData);
         });
     };
+
+
+    useEffect(() => {
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleLogout = async () => {
         await fetch('/api/admin', { method: 'DELETE' });
