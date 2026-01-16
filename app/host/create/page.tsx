@@ -275,7 +275,7 @@ export default function CreateRoomPage() {
                         {showAdvanced && (
                             <div className="p-4 bg-white border-t-2 border-gray-100">
                                 <p className="text-xs text-gray-500 mb-3 font-medium">
-                                    Tell the AI how to format the quiz. Upload past exams, paste style instructions (e.g. "Make it hard"), or link to a syllabus.
+                                    Tell the AI how to format the quiz. Upload past exams, paste style instructions (e.g. &quot;Make it hard&quot;), or link to a syllabus.
                                 </p>
                                 
                                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-3 bg-gray-50 focus-within:bg-white focus-within:border-brand-300 transition-colors">
