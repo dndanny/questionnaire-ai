@@ -155,8 +155,6 @@ export default function CreateRoomPage() {
                 materials: finalItems,
                 blueprint: finalBlueprint, // Send the complete list
                 counts,
-
-                counts,
                 config: { gradingMode: config.mode, markingType: config.markingType }
             })
         });
