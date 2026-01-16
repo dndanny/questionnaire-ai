@@ -98,6 +98,7 @@ export async function POST(req: Request) {
   await dbConnect();
 
   const room = await Room.findById(roomId);
+  if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   const markingType = room.config?.markingType || 'batch';
 
   const submissionData = {
